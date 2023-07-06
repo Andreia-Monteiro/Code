@@ -366,95 +366,6 @@ fit.preferential.model<-function(range0,pr=0.01,sigma0,ps=0.01,mesh,sampData){
 }
 
 
-paper.simul.square1<-function(total_rep=100,a=0.3,b=0.15,sigma0=sqrt(1.5),range0=0.15,mu.field=4,
-                             nugget.prec=1/0.1,n=100,beta=2,perc=5){
-  #Function to simulate spatial data preferentially (beta is the preferential parameter) in a 
-  #square domain [0,1]x[0,1], test whether that preferentiability is spotted (MLC test), to
-  #construct a covariate to mitigate the preferential sampling effect and to test whether it
-  #accomplished its purposes when included in modelling, by testing the residuals of the model 
-  #that includes that covariate for preferentiability 
-  
-  #Inputs
-  #Parameters used to construct the mesh to simulate the field
-  #total_rep - number of replicas to do
-  #a - inner max.edge
-  #b - outer max.edge
-  #sigma0 - marginal sd of the field
-  #range0 - scale
-  #mu.field - mean of the random field S(x)
-  #beta - preferential parameter 
-  #nugget.prec - nugget precision (of Y)
-  #n - number of observations to sample
-  
-  
-  
-  # mesh to simulate spatially structured random effect
-  # the study region is set as a square domain: (0,1)x(0,1) \subset R^2
-  domain_boundary <- matrix(c(0,0,1,0,1,1,0,1,0,0), byrow=TRUE, ncol=2) 
-  mesh <- inla.mesh.2d(loc.domain=domain_boundary, max.edge=c(a, b))
-  #Plot the mesh - use function gg of library(inlabru)
-  ggplot() + gg(mesh) + theme(axis.title.x = element_blank(),axis.title.y = element_blank())
-  #VER!!! gg()
-  
-  rep<-0
-  while(rep < total_rep){
-    rep=rep+1
-    
-    #Simulation of the spatial random effect of mean mu.field, in a given grid in the unit square domain
-    sim.ran.eff<-simul.rand.effect(range0,sigma0,mesh=mesh,mu.field)
-    u_ver<-sim.ran.eff$u_ver
-    grid.REff<-sim.ran.eff$grid  #Grid of the simulated random effect
-    
-    
-    #Plot simulated random field
-    p1<-plot.simulated.field(grid.REff,u_ver)
-    p1
-    
-    #Sample the data according to PP with intensity exp(beta*S(x))
-    sampData<-sample.prefer(u_ver,nugget.prec,grid.REff,n,beta)
-    
-    #Plot the sample data over the surface S(x)
-    p1+geom_point(data=sampData,shape = 21,colour = "black", fill = "white", size=1,mapping=aes(x=x,y=y)) +
-      theme(axis.title.x = element_blank(),axis.title.y = element_blank())
-    
-    #MLC test for data preferentiability
-    RES<-MLC(domain_boundary,sampData)
-    
-    #Write results out
-    write.table(matrix(RES,ncol=3), 
-                file=paste("RES_nocovariate_beta",beta,"_",n,"obs_",perc,"p.txt",sep=""), 
-                append=T,row.names=F, col.names=F)
-    
-    
-    
-    #Obtain the construct covariate Distance to the k nearest neighbours (5% nearest neighbours)
-    nndistance<-construct.covariate(sampData,perc)
-    
-    
-    #Plot the covariate
-    plot.covariate(sampData,nndistance,grid.REff,u_ver)
-    
-    #Fit model to data including the constructed covariate, no adjustment for preferential sampling
-    res.aux<-fit.construct.model(range0,pr=0.01,sigma0,ps=0.01,mesh,sampData,nndistance)
-    result_smooth_dados2<-res.aux$result_smooth_dados2
-    
-    summary(result_smooth_dados2)
-    
-    resid1<-data.frame(x=sampData$x,y=sampData$y,resid=res.aux$resid)  #A coluna 3 do sampData não deveria chamar-se ysim; Impacta o ficheiro do teste
-    
-    #MLC test for resuduals preferentiability
-    RES2<-MLC(domain_boundary,resid1)
-    
-    #Write results out
-    write.table(matrix(RES2,ncol=3), 
-                file=paste("RES_covariate_beta",beta,"_",n,"obs_",perc,"p.txt",sep=""), 
-                append=T,row.names=F, col.names=F)
-    
-  } #end while
-  
-  
-}
-
 
 
 paper.simul.square2<-function(total_rep=100,a=0.3,b=0.15,sigma0=sqrt(1.5),range0=0.15,mu.field=4,
@@ -487,8 +398,7 @@ paper.simul.square2<-function(total_rep=100,a=0.3,b=0.15,sigma0=sqrt(1.5),range0
   mesh <- inla.mesh.2d(loc.domain=domain_boundary, max.edge=c(a, b))
   #Plot the mesh - use function gg of library(inlabru)
   ggplot() + gg(mesh) +
-    theme(axis.title.x = element_blank(),axis.title.y = element_blank())    
-  ###TENTAR TIRAR DEPENDENCIA DO GG!!!
+    theme(axis.title.x = element_blank(),axis.title.y = element_blank())
   
   
   rep<-0
